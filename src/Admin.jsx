@@ -9,10 +9,12 @@ export default function Admin() {
   const [salary, setSalary] = useState(user.salary);
   const [expenses, setExpenses] = useState();
   const [categories, setCategories] = useState([]);
-  const [expenseCategory, setExpenseCategory] = useState(0);
+  const [expenseCategory, setExpenseCategory] = useState(1);
   const [expenseAmount, setExpenseAmount] = useState(0);
   const [description, setDescription] = useState("");
   const [expenseName, setExpenseName] = useState("");
+  const [editingSalary, setEditingSalary] = useState(false);
+  const [updatedSalary, setUpdatedSalary] = useState(user.salary);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export default function Admin() {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          `http://localhost:4000/api/spent/${user.id}`,
+          `https://stopspent-backend-production.up.railway.app/api/spent/${user.id}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -66,7 +68,7 @@ export default function Admin() {
       try {
         const token = localStorage.getItem("token");
         const response = await fetch(
-          "http://localhost:4000/api/spentcategory",
+          "https://stopspent-backend-production.up.railway.app/api/spentcategory",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -87,6 +89,43 @@ export default function Admin() {
     fetchCategoryAndData();
   }, []);
 
+  const handleEditSalary = () => {
+    setEditingSalary(true);
+  };
+  const handleSaveSalary = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `https://stopspent-backend-production.up.railway.app/api/auth/update/${user.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ salary: updatedSalary }),
+        }
+      );
+      if (response.ok) {
+        const updatedUser = { ...user, salary: updatedSalary };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setSalary(updatedSalary);
+        setEditingSalary(false);
+        toast.success("Salario actualizado correctamente");
+      } else {
+        throw new Error("Error en la solicitud");
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  const handleCancelEditSalary = () => {
+    setUpdatedSalary(salary);
+    setEditingSalary(false);
+  };
+
   const handleAddExpense = async (e) => {
     e.preventDefault();
     const newExpense = {
@@ -98,7 +137,7 @@ export default function Admin() {
     };
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:4000/api/spent", {
+      const response = await fetch("https://stopspent-backend-production.up.railway.app/api/spent", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -110,7 +149,7 @@ export default function Admin() {
         const updatedExpense = await response.json();
         const updatedExpenses = [...expenses, updatedExpense.data];
         setExpenses(updatedExpenses);
-        toast.success(`Gasto ${newExpense.name} agregado correctamente`)
+        toast.success(`Gasto ${newExpense.name} agregado correctamente`);
         // Actualizar user.spents en localStorage
         const updatedUser = {
           ...user,
@@ -141,14 +180,13 @@ export default function Admin() {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("user");
     localStorage.removeItem("token");
-    navigate("/")
+    navigate("/");
   };
-
 
   const handleDeleteExpense = async (id) => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`http://localhost:4000/api/spent/${id}`, {
+      const response = await fetch(`https://stopspent-backend-production.up.railway.app/api/spent/${id}`, {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -160,7 +198,7 @@ export default function Admin() {
           (expense) => expense?.id !== id
         );
         setExpenses(updatedExpenses);
-        toast.error(`Gasto Eliminado correctamente`)
+        toast.error(`Gasto Eliminado correctamente`);
         const updatedUser = {
           ...user,
           spents: [...expenses, updatedExpenses],
@@ -174,111 +212,151 @@ export default function Admin() {
     }
   };
 
-  return (<>
-    <Container>
-        
-      <div className="d-flex justify-content-between  align-items-center" >
-      <h1 className=" mt-4">Gestión de Gastos</h1>
-        <Button className="btn-sm h-25 "  variant="danger" onClick={handleLogout}>
-          Cerrar Sesión
-        </Button>
-      </div>
-      {/* Sección para mostrar el salario mensual */}
-      <Row>
-        <Col>
-          <h2>Salario Mensual</h2>
-          <p>Salario: ${salary}</p>
-        </Col>
-      </Row>
+  return (
+    <>
+      <Container>
+        <div className="d-flex justify-content-between  align-items-center">
+          <h1 className=" mt-4">Gestión de Gastos</h1>
+          <Button
+            className="btn-sm h-25 "
+            variant="danger"
+            onClick={handleLogout}
+          >
+            Cerrar Sesión
+          </Button>
+        </div>
+        {/* Sección para mostrar el salario mensual */}
+        <Row>
+          <Col>
+            <h2>Salario Mensual</h2>
+            {editingSalary ? (
+              <Form.Group>
+                <Form.Control
+                  type="number"
+                  value={updatedSalary}
+                  onChange={(e) => setUpdatedSalary(e.target.value)}
+                />
+              </Form.Group>
+            ) : (
+              <p>Salario: ${salary}</p>
+            )}
+            {editingSalary ? (
+              <div>
+                <Button variant="primary" onClick={handleSaveSalary}>
+                  Guardar
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleCancelEditSalary}
+                  className="ml-2"
+                >
+                  Cancelar
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline-primary" onClick={handleEditSalary}>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  className="bi bi-pencil"
+                  viewBox="0 0 16 16"
+                >
+                  <path d="M12.793 3.793a.5.5 0 0 1 0 .708L3.5 13H3a1 1 0 0 1-1-1v-.5a.5.5 0 0 1 .146-.354l9.5-9.5a.5.5 0 0 1 .708 0zm1.414-1.414a2 2 0 0 1 0 2.828l-1.5 1.5a.5.5 0 0 1-.707 0L8 4.207 4.207 8l1.5 1.5a.5.5 0 0 1 0 .707l-1.5 1.5a2 2 0 0 1 2.828 0L12 7.793l3.793 3.793a2 2 0 0 1 0 2.828l-1.5 1.5a.5.5 0 0 1-.707 0L8 11.207l-3.793 3.793a.5.5 0 0 1-.707 0l-1.5-1.5a2 2 0 0 1 0-2.828L4.207 8 .414 4.207a2 2 0 0 1 0-2.828l1.5-1.5a.5.5 0 0 1 .707 0L8 4.793l3.793-3.793a.5.5 0 0 1 .707 0l1.5 1.5z" />
+                </svg>
+              </Button>
+            )}
+          </Col>
+        </Row>
 
-      {/* Sección para mostrar los gastos */}
-      <Row>
-        <Col>
-          <h2>Gastos</h2>
-          <ListGroup>
-            {expenses?.map((expense, index) => (
-              <ListGroup.Item key={index}>
-                <div className="d-flex justify-content-between">
-                  <div>
-                    Gasto: {expense?.name} - Total: {expense?.precio} -
-                    Descripción: {expense?.description}
+        {/* Sección para mostrar los gastos */}
+        <Row>
+          <Col>
+            <h2>Gastos</h2>
+            <ListGroup>
+              {expenses?.map((expense, index) => (
+                <ListGroup.Item key={index}>
+                  <div className="d-flex justify-content-between">
+                    <div>
+                      Gasto: {expense?.name} - Total: {expense?.precio} -
+                      Descripción: {expense?.description}
+                    </div>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleDeleteExpense(expense?.id)}
+                    >
+                      Eliminar
+                    </Button>
                   </div>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleDeleteExpense(expense?.id)}
-                  >
-                    Eliminar
-                  </Button>
-                </div>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
-        </Col>
-      </Row>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          </Col>
+        </Row>
 
-      {/* Formulario para agregar nuevos gastos */}
-      <Row>
-        <Col>
-          <h2>Agregar Gasto</h2>
-          <Form onSubmit={handleAddExpense}>
-            <Form.Group controlId="expenseCategory">
-              <Form.Label>Categoría:</Form.Label>
-              <Form.Control
-                as="select"
-                value={expenseCategory}
-                onChange={(e) => setExpenseCategory(Number(e.target.value))}
-              >
-                {categories.map((option, index) => (
-                  <option key={index} value={option.id}>
-                    {option.name}
-                  </option>
-                ))}
-              </Form.Control>
-            </Form.Group>
-            <Form.Group controlId="expenseCategory">
-              <Form.Label>Nombre:</Form.Label>
-              <Form.Control
-                type="text"
-                value={expenseName}
-                onChange={(e) => setExpenseName(e.target.value)}
-              ></Form.Control>
-            </Form.Group>
+        {/* Formulario para agregar nuevos gastos */}
+        <Row>
+          <Col>
+            <h2>Agregar Gasto</h2>
+            <Form onSubmit={handleAddExpense}>
+              <Form.Group controlId="expenseCategory">
+                <Form.Label>Categoría:</Form.Label>
+                <Form.Control
+                  as="select"
+                  value={expenseCategory}
+                  onChange={(e) => setExpenseCategory(Number(e.target.value))}
+                >
+                  {categories.map((option, index) => (
+                    <option key={index} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </Form.Control>
+              </Form.Group>
+              <Form.Group controlId="expenseCategory">
+                <Form.Label>Nombre:</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={expenseName}
+                  onChange={(e) => setExpenseName(e.target.value)}
+                ></Form.Control>
+              </Form.Group>
 
-            <Form.Group controlId="expenseAmount">
-              <Form.Label>Total:</Form.Label>
-              <Form.Control
-                type="number"
-                value={expenseAmount}
-                onChange={(e) => setExpenseAmount(Number(e.target.value))}
-              />
-            </Form.Group>
+              <Form.Group controlId="expenseAmount">
+                <Form.Label>Total:</Form.Label>
+                <Form.Control
+                  type="number"
+                  value={expenseAmount}
+                  onChange={(e) => setExpenseAmount(Number(e.target.value))}
+                />
+              </Form.Group>
 
-            <Form.Group controlId="expenseAmount">
-              <Form.Label>Descripcion:</Form.Label>
-              <Form.Control
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-              />
-            </Form.Group>
+              <Form.Group controlId="expenseAmount">
+                <Form.Label>Descripcion:</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                />
+              </Form.Group>
 
-            <Button variant="primary" className="mt-2" type="submit">
-              Agregar Gasto
-            </Button>
-          </Form>
-        </Col>
-      </Row>
+              <Button variant="primary" className="mt-2" type="submit">
+                Agregar Gasto
+              </Button>
+            </Form>
+          </Col>
+        </Row>
 
-      {/* Sección para mostrar el restante del salario */}
-      <Row>
-        <Col>
-          <h2>Restante</h2>
-          <p>Restante: ${calculateRemaining()}</p>
-        </Col>
-      </Row>
-    </Container>
-          <ToastContainer />
-                    
-                    </>
+        {/* Sección para mostrar el restante del salario */}
+        <Row className="mt-3">
+          <Col>
+            <h2>Restante</h2>
+            <p>Restante: ${calculateRemaining()}</p>
+          </Col>
+        </Row>
+      </Container>
+      <ToastContainer />
+    </>
   );
 }
